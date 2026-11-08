@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1A3A5C">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Behavior Tally</title>
+<style>
+  :root { --navy:#1A3A5C; --bg:#F1F4F8; --card:#fff; --ink:#18212B; --mute:#66758A; --line:#DDE3EA;
+          --gold:#F2C230; --yellow:#F5D90A; --red:#D32F2F; --ok:#1B6B35; --warn:#C96A00; --bad:#B22222; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; background:var(--bg); color:var(--ink);
+              font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  body { padding-bottom:calc(72px + env(safe-area-inset-bottom)); user-select:none; -webkit-user-select:none; }
+  body.noscroll { overflow:hidden; }
+  button { font:inherit; color:inherit; touch-action:manipulation; cursor:pointer; }
+  button:disabled { opacity:.35; cursor:default; }
+  [hidden] { display:none !important; }
+
+  #datebar { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:8px;
+             background:var(--navy); color:#fff; padding:calc(8px + env(safe-area-inset-top)) 10px 8px; }
+  #datebar button { background:rgba(255,255,255,.14); border:0; color:#fff; width:48px; height:44px;
+                    border-radius:10px; font-size:24px; }
+  #dateLabel { flex:1; text-align:center; font-weight:700; font-size:18px; padding:8px 0; }
+  .pagehead { background:var(--navy); color:#fff; padding:calc(14px + env(safe-area-inset-top)) 14px 12px;
+              font-weight:700; font-size:18px; display:flex; align-items:center; gap:8px; justify-content:space-between; }
+  .pagehead button { background:rgba(255,255,255,.14); border:0; color:#fff; width:44px; height:40px; border-radius:10px; font-size:22px; }
+  .pagehead span { flex:1; text-align:center; }
+
+  #banner { background:#FFF1C9; color:#6B4A00; padding:10px 14px; font-size:14px; }
+  .linkbtn { background:none; border:0; color:#0B57D0; font-weight:700; text-decoration:underline; padding:4px; }
+
+  #tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:10px; }
+  .tile { text-align:left; background:var(--card); border:0; border-left:8px solid var(--accent);
+          border-radius:14px; padding:12px 12px 10px; min-height:132px; box-shadow:0 1px 3px rgba(20,40,70,.14); }
+  .tile:active { transform:scale(.98); }
+  .tile.warn { background:#FFF6E8; } .tile.bad { background:#FDECEC; }
+  .tname { font-size:19px; font-weight:800; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chips { display:flex; gap:5px; margin-bottom:6px; }
+  .chip { flex:1; text-align:center; font-weight:800; font-size:15px; border-radius:8px; padding:3px 0; }
+  .chip.s { background:#FFF0B3; color:#6B5300; } .chip.y { background:#FFF47A; color:#665A00; } .chip.r { background:#FAD0D0; color:#8E1B1B; }
+  .dem { font-size:13px; color:var(--mute); } .dem b { color:var(--ink); font-size:15px; }
+  .hint { font-size:12.5px; font-weight:700; margin-top:2px; }
+  .hint.ok { color:var(--ok); font-weight:600; } .hint.warn { color:var(--warn); } .hint.bad { color:var(--bad); }
+
+  /* bottom sheet */
+  #sheet { position:fixed; inset:0; z-index:20; }
+  #backdrop { position:absolute; inset:0; background:rgba(10,20,35,.5); }
+  #panel { position:absolute; left:0; right:0; bottom:0; max-height:92vh; overflow:auto; background:#fff;
+           border-radius:20px 20px 0 0; padding:16px 14px calc(16px + env(safe-area-inset-bottom)); }
+  #sheetTitle { font-size:24px; font-weight:800; margin:0; }
+  #sheetDay { color:var(--mute); font-size:14px; }
+  #sheetStatus { margin:6px 0 12px; font-size:14px; }
+  .acts { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .act { position:relative; border:0; border-radius:16px; min-height:104px; font-size:20px; font-weight:800;
+         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; box-shadow:0 2px 0 rgba(0,0,0,.18); }
+  .act:active { transform:translateY(2px); box-shadow:none; }
+  .act .big { font-size:34px; line-height:1; }
+  .act .cnt { position:absolute; top:6px; right:8px; min-width:26px; padding:1px 7px; border-radius:99px; background:rgba(0,0,0,.16); font-size:15px; }
+  #btnS { background:var(--gold); color:#2B2100; } #btnY { background:var(--yellow); color:#2B2800; } #btnR { background:var(--red); color:#fff; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .sec { border:2px solid var(--line); background:#fff; border-radius:12px; min-height:48px; font-weight:700; }
+  #btnDone { width:100%; margin-top:12px; min-height:52px; border:0; border-radius:12px; background:var(--navy); color:#fff; font-weight:800; font-size:17px; }
+  h3 { margin:14px 0 4px; font-size:14px; color:var(--mute); text-transform:uppercase; letter-spacing:.04em; }
+  #entries { list-style:none; margin:0; padding:0; }
+  #entries li { display:flex; align-items:center; gap:10px; padding:6px 2px; border-bottom:1px solid var(--line); }
+  #entries .tm { margin-left:auto; color:var(--mute); font-size:14px; }
+  #entries .empty { color:var(--mute); border:0; }
+  .dot { width:14px; height:14px; border-radius:50%; } .dot.s { background:var(--gold); } .dot.y { background:var(--yellow); outline:1px solid #B8A400; } .dot.r { background:var(--red); } .dot.b { background:#7B5BC0; }
+  .del { width:40px; height:36px; border:0; background:#F0F2F5; border-radius:8px; font-size:20px; }
+
+  /* week */
+  .wrap { padding:10px; }
+  table.wk { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(20,40,70,.14); table-layout:fixed; }
+  .wk th, .wk td { padding:5px 1px; text-align:center; border-bottom:1px solid var(--line); }
+  .wk thead th { background:#E8EEF5; }
+  .wk th.nm { text-align:left; width:27%; padding-left:6px; font-size:11.5px; border-left:6px solid var(--accent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .daybtn { background:none; border:0; font-weight:800; font-size:12px; padding:4px 0; width:100%; }
+  .daybtn small { display:block; color:var(--mute); font-weight:600; }
+  .wk td span { display:block; font-size:11px; font-weight:800; line-height:1.25; }
+  .ms { color:#8A6A00; } .my { color:#8E8200; } .mr { color:var(--red); } .none { color:#B5BECA; font-weight:400 !important; }
+  .wk td.warnc { background:#FFF1DC; }
+  #weekTotals { margin-top:12px; background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(20,40,70,.14); }
+  .trow { display:flex; justify-content:space-between; gap:8px; padding:10px 12px; border-left:6px solid var(--accent); border-bottom:1px solid var(--line); font-size:14px; }
+  .trow:last-child { border-bottom:0; }
+
+  /* more */
+  .card { background:#fff; border-radius:12px; padding:14px; margin-bottom:12px; box-shadow:0 1px 3px rgba(20,40,70,.14); }
+  .card h2 { margin:0 0 8px; font-size:16px; }
+  .card p { margin:0 0 10px; color:var(--mute); font-size:14px; }
+  label { display:block; font-size:13px; color:var(--mute); margin-bottom:8px; }
+  input[type=text] { display:block; width:100%; font:inherit; font-size:17px; padding:10px; margin-top:3px; border:2px solid var(--line); border-radius:10px; user-select:text; -webkit-user-select:text; }
+  .btn { display:block; width:100%; min-height:48px; margin-top:8px; border:0; border-radius:12px; background:var(--navy); color:#fff; font-weight:700; }
+  .btn.alt { background:#E8EEF5; color:var(--navy); } .btn.danger { background:#FBE3E3; color:var(--bad); }
+  input[type=file] { margin-top:8px; font-size:14px; }
+
+  #tabs { position:fixed; left:0; right:0; bottom:0; z-index:10; display:grid; grid-template-columns:repeat(3,1fr);
+          background:#fff; border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); }
+  #tabs button { background:none; border:0; min-height:60px; font-weight:700; font-size:13px; color:var(--mute); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+  #tabs button span { font-size:22px; line-height:1; }
+  #tabs button.on { color:var(--navy); box-shadow:inset 0 3px 0 var(--navy); }
+
+  #toast { position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(20px); z-index:40;
+           background:#18212B; color:#fff; padding:10px 16px; border-radius:99px; font-weight:700; font-size:15px; opacity:0; pointer-events:none; transition:.2s; max-width:90vw; text-align:center; }
+  #toast.show { opacity:1; transform:translateX(-50%); }
+  #welcome { position:fixed; inset:0; z-index:50; background:var(--navy); overflow:auto; padding:calc(24px + env(safe-area-inset-top)) 18px 24px; color:#fff; }
+  #welcome h1 { margin:0 0 6px; } #welcome p { margin:0 0 16px; color:#C9D6E6; }
+  #welcome label { color:#C9D6E6; } #welcome .btn { background:var(--gold); color:#2B2100; font-size:17px; }
+</style>
+</head>
+<body>
+
+<div id="datebar">
+  <button id="prevDay" aria-label="Previous day">&lsaquo;</button>
+  <div id="dateLabel"></div>
+  <button id="nextDay" aria-label="Next day">&rsaquo;</button>
+</div>
+
+<main>
+  <section id="view-today">
+    <div id="banner" hidden></div>
+    <div id="tiles"></div>
+  </section>
+
+  <section id="view-week" hidden>
+    <div class="pagehead"><button id="prevWeek" aria-label="Previous week">&lsaquo;</button><span id="weekLabel"></span><button id="nextWeek" aria-label="Next week">&rsaquo;</button></div>
+    <div class="wrap">
+      <div id="weekTable"></div>
+      <div id="weekTotals"></div>
+      <p style="color:#66758A;font-size:13px">Tap a day to open it on the Today screen. Orange days had 2+ demerits.</p>
+    </div>
+  </section>
+
+  <section id="view-more" hidden>
+    <div class="pagehead"><span>Settings &amp; export</span></div>
+    <div class="wrap">
+      <div class="card">
+        <h2>Children's names</h2>
+        <p>Stored only on this device.</p>
+        <div id="nameInputs"></div>
+        <button class="btn" id="saveNames">Save names</button>
+      </div>
+      <div class="card">
+        <h2>Export for Excel</h2>
+        <p>The week CSV has one row per child per day: stars, yellows, reds, stars spent, net demerits.</p>
+        <button class="btn" id="exportWeek">Download week (selected on Week tab)</button>
+        <button class="btn alt" id="exportAll">Download daily summary, all dates</button>
+        <button class="btn alt" id="exportLog">Download full log with times</button>
+      </div>
+      <div class="card">
+        <h2>Backup</h2>
+        <p>Data lives in this browser. Clearing site data or uninstalling would erase it, so back up now and then.</p>
+        <button class="btn alt" id="backup">Download backup file</button>
+        <input type="file" id="restore" accept=".json,application/json">
+        <p style="margin-top:6px">Choose a backup file above to restore it.</p>
+      </div>
+      <div class="card">
+        <button class="btn" id="installBtn" hidden>Install app on this phone</button>
+        <button class="btn danger" id="wipe">Delete all entries</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="sheet" hidden>
+  <div id="backdrop"></div>
+  <div id="panel" role="dialog" aria-modal="true">
+    <h2 id="sheetTitle"></h2>
+    <div id="sheetDay"></div>
+    <div id="sheetStatus"></div>
+    <div class="acts">
+      <button class="act" id="btnS"><span class="cnt" id="cntS">0</span><span class="big">&#9733;</span>Star</button>
+      <button class="act" id="btnY"><span class="cnt" id="cntY">0</span><span class="big">&#9632;</span>Yellow</button>
+      <button class="act" id="btnR"><span class="cnt" id="cntR">0</span><span class="big">&#9632;</span>Red</button>
+    </div>
+    <div class="row2">
+      <button class="sec" id="btnB">Stars spent: <span id="cntB">0</span> (+1)</button>
+      <button class="sec" id="btnUndo">Undo last</button>
+    </div>
+    <h3>Entries</h3>
+    <ul id="entries"></ul>
+    <button id="btnDone">Done</button>
+  </div>
+</div>
+
+<nav id="tabs">
+  <button id="tab-today" class="on"><span>&#9733;</span>Today</button>
+  <button id="tab-week"><span>&#9638;</span>Week</button>
+  <button id="tab-more"><span>&#9881;</span>More</button>
+</nav>
+
+<div id="toast"></div>
+
+<div id="welcome" hidden>
+  <h1>Welcome</h1>
+  <p>Type each child's name once. They stay on this phone only. You can change them later under More.</p>
+  <div id="welcomeInputs"></div>
+  <button class="btn" id="welcomeSave">Start</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
